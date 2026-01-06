@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>Texas Hold'em — Pocket Table</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:#071016;
+    --panel: rgba(255,255,255,.06);
+    --stroke: rgba(255,255,255,.12);
+    --text:#eaf0f7;
+    --muted: rgba(234,240,247,.72);
+    --good: rgba(183,255,207,.14);
+    --goodStroke: rgba(183,255,207,.28);
+    --warn: rgba(255,220,160,.14);
+    --warnStroke: rgba(255,220,160,.28);
+    --bad: rgba(255,90,90,.14);
+    --badStroke: rgba(255,90,90,.28);
+  }
+  * { box-sizing:border-box; }
+  html, body {
+    margin:0; height:100%;
+    font-family:-apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+    background: radial-gradient(1200px 800px at 20% 0%, #0b2233 0%, var(--bg) 55%, #050b10 100%);
+    color: var(--text);
+    overflow:hidden;
+  }
+  .app { height:100dvh; display:flex; flex-direction:column; }
+  header {
+    padding: 12px 12px 10px;
+    border-bottom: 1px solid var(--stroke);
+    background: rgba(0,0,0,.22);
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    align-items:flex-start;
+  }
+  .title { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  h1 {
+    margin:0;
+    font-size:18px;
+    letter-spacing:.06em;
+    font-weight:900;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .sub { font-size:12px; color: var(--muted); font-weight:750; line-height:1.25; }
+  .chip {
+    border:1px solid var(--stroke);
+    background: rgba(255,255,255,.06);
+    padding:8px 10px;
+    border-radius:999px;
+    font-weight:900;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  main {
+    flex:1;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+  }
+  .grid { display:grid; gap:12px; }
+  .card {
+    border:1px solid var(--stroke);
+    background: var(--panel);
+    border-radius:16px;
+    padding:12px;
+  }
+  .row {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+  }
+  .table {
+    border:1px solid rgba(255,255,255,.10);
+    background: linear-gradient(135deg, rgba(20,110,70,.35), rgba(10,60,40,.35));
+    border-radius:18px;
+    padding:12px;
+  }
+  .label {
+    font-size:12px;
+    font-weight:900;
+    opacity:.9;
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .handArea {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
+  .cards { display:flex; gap:8px; flex-wrap:wrap; }
+  .cardUI {
+    width:52px;
+    height:72px;
+    border-radius:12px;
+    border:1px solid rgba(255,255,255,.18);
+    background: rgba(0,0,0,.26);
+    display:grid;
+    place-items:center;
+    font-weight:1000;
+    font-size:20px;
+    letter-spacing:.02em;
+    user-select:none;
+  }
+  .cardUI.red { color: #ffb3b3; }
+  .cardUI.black { color: #dfe7ff; }
+  .cardBack {
+    background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+    color: rgba(0,0,0,.0);
+    position:relative;
+  }
+  .cardBack::after {
+    content:"◉";
+    color: rgba(255,255,255,.35);
+    font-size:22px;
+    position:absolute;
+  }
+  .status { font-size:13px; color: var(--muted); font-weight:800; line-height:1.3; }
+  .result {
+    margin-top:10px;
+    padding:10px;
+    border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background: rgba(0,0,0,.22);
+  }
+  .result .winner {
+    font-weight:1000;
+    letter-spacing:.02em;
+    margin-bottom:6px;
+  }
+  .small { font-size:12px; color: var(--muted); font-weight:750; line-height:1.35; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+  .score {
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:10px;
+    margin-top:10px;
+  }
+  .stat {
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(0,0,0,.18);
+    border-radius:14px;
+    padding:10px;
+  }
+  .stat .k {
+    font-size:11px;
+    font-weight:950;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    opacity:.85;
+  }
+  .stat .v {
+    margin-top:4px;
+    font-size:18px;
+    font-weight:1000;
+  }
+  .actions {
+    position: sticky;
+    bottom: 0;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: rgba(0,0,0,.38);
+    border-top: 1px solid rgba(255,255,255,.10);
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:10px;
+  }
+  button {
+    border:1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.08);
+    color: var(--text);
+    border-radius:14px;
+    padding: 12px 12px;
+    font-weight:950;
+    font-size:16px;
+    min-height: 46px;
+  }
+  button.primary {
+    background: rgba(255,255,255,.16);
+    border-color: rgba(255,255,255,.22);
+  }
+  button.good {
+    background: var(--good);
+    border-color: var(--goodStroke);
+  }
+  button.warn {
+    background: var(--warn);
+    border-color: var(--warnStroke);
+  }
+  button.bad {
+    background: var(--bad);
+    border-color: var(--badStroke);
+  }
+  button:disabled { opacity:.45; }
+  button:active { transform: scale(.99); }
+
+  .raiseBox {
+    border:1px solid rgba(255,255,255,.10);
+    background: rgba(0,0,0,.18);
+    border-radius:14px;
+    padding:10px;
+  }
+  input[type="range"] {
+    width:100%;
+  }
+  .raiseLine {
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+
+  @media (min-width: 900px) {
+    main { max-width: 920px; margin: 0 auto; }
+    .actions { grid-template-columns: repeat(6, 1fr); border-radius: 16px; margin: 10px auto; max-width: 920px; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header>
+    <div class="title">
+      <h1>Texas Hold'em — Pocket Table</h1>
+      <div class="sub">Heads-up with simple betting (check/call/raise/fold). Tap through streets.</div>
+    </div>
+    <div class="chip" id="buildChip">Build v0.2.0</div>
+  </header>
+
+  <main>
+    <div class="grid">
+
+      <div class="card table">
+        <div class="row">
+          <div class="label">Opponent</div>
+          <div class="status" id="oppStatus">Tap “New Hand”</div>
+        </div>
+        <div class="handArea">
+          <div class="cards" id="oppCards"></div>
+          <div class="small" id="oppHint">Opponent hole cards stay hidden until Showdown.</div>
+        </div>
+
+        <div class="score">
+          <div class="stat"><div class="k">Opp Stack</div><div class="v" id="oppStack">$1000</div></div>
+          <div class="stat"><div class="k">Pot</div><div class="v" id="potAmt">$0</div></div>
+          <div class="stat"><div class="k">Your Stack</div><div class="v" id="youStack">$1000</div></div>
+        </div>
+
+        <div style="height:10px;"></div>
+        <div class="row">
+          <div class="label">Board</div>
+          <div class="status" id="streetStatus">Street: Preflop</div>
+        </div>
+        <div class="cards" id="boardCards" style="margin-top:8px;"></div>
+
+        <div style="height:10px;"></div>
+        <div class="row">
+          <div class="label">You</div>
+          <div class="status" id="youStatus">—</div>
+        </div>
+        <div class="handArea">
+          <div class="cards" id="youCards"></div>
+          <div class="small" id="youHint">Your hole cards.</div>
+        </div>
+
+        <div class="raiseBox" style="margin-top:10px;">
+          <div class="raiseLine">
+            <div class="label" style="text-transform:none; letter-spacing:0;">Raise size</div>
+            <div class="chip" id="raiseChip">$0</div>
+          </div>
+          <input type="range" id="raiseRange" min="0" max="100" step="5" value="0" />
+          <div class="small" id="toCallLine" style="margin-top:6px;">To call: $0</div>
+        </div>
+
+        <div class="result" id="resultBox" style="display:none;"></div>
+      </div>
+
+      <div class="card">
+        <div class="row"><div class="label">Rules (simple)</div></div>
+        <div class="small" style="margin-top:8px;">
+          • Blinds: <b>$5/$10</b>. Dealer button alternates each hand.<br/>
+          • Heads-up rules: Dealer (SB) acts first preflop; BB acts first postflop.<br/>
+          • No side pots. All-in is allowed (cap at stack).<br/>
+          • Opponent AI is simple: it reacts to hand strength + a little randomness.
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="actions">
+    <button class="primary" id="btnNew">New Hand</button>
+    <button class="good" id="btnCheckCall">Check</button>
+    <button class="good" id="btnBetRaise">Bet</button>
+    <button class="warn" id="btnNext">Next Street</button>
+    <button class="warn" id="btnShow">Showdown</button>
+    <button class="bad" id="btnFold">Fold</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const BUILD = "v0.2.0";
+  const SUITS = ["♠","♥","♦","♣"];
+  const SUIT_COLOR = (s) => (s === "♥" || s === "♦") ? "red" : "black";
+
+  const SMALL_BLIND = 5;
+  const BIG_BLIND = 10;
+  const START_STACK = 1000;
+
+  const els = {
+    buildChip: document.getElementById("buildChip"),
+    oppStatus: document.getElementById("oppStatus"),
+    streetStatus: document.getElementById("streetStatus"),
+    youStatus: document.getElementById("youStatus"),
+    oppCards: document.getElementById("oppCards"),
+    youCards: document.getElementById("youCards"),
+    boardCards: document.getElementById("boardCards"),
+    resultBox: document.getElementById("resultBox"),
+    oppStack: document.getElementById("oppStack"),
+    youStack: document.getElementById("youStack"),
+    potAmt: document.getElementById("potAmt"),
+    raiseRange: document.getElementById("raiseRange"),
+    raiseChip: document.getElementById("raiseChip"),
+    toCallLine: document.getElementById("toCallLine"),
+    btnNew: document.getElementById("btnNew"),
+    btnCheckCall: document.getElementById("btnCheckCall"),
+    btnBetRaise: document.getElementById("btnBetRaise"),
+    btnNext: document.getElementById("btnNext"),
+    btnShow: document.getElementById("btnShow"),
+    btnFold: document.getElementById("btnFold"),
+  };
+  els.buildChip.textContent = "Build " + BUILD;
+
+  // --- Cards / deck ---
+  function makeDeck() {
+    const d = [];
+    for (let r = 2; r <= 14; r++) for (const s of SUITS) d.push({r, s});
+    return d;
+  }
+  function shuffle(a) {
+    for (let i=a.length-1; i>0; i--) {
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function dealOne() {
+    if (!deck.length) throw new Error("Deck empty");
+    return deck.pop();
+  }
+  function rToChar(r) {
+    if (r <= 9) return String(r);
+    return {10:"T",11:"J",12:"Q",13:"K",14:"A"}[r];
+  }
+  function cardLabel(c) { return rToChar(c.r) + c.s; }
+
+  function renderCards(container, cards, hide=false, countOverride=null) {
+    container.innerHTML = "";
+    const count = countOverride !== null ? countOverride : cards.length;
+    for (let i=0; i<count; i++) {
+      if (hide) {
+        const div = document.createElement("div");
+        div.className = "cardUI cardBack";
+        container.appendChild(div);
+      } else {
+        const c = cards[i];
+        const div = document.createElement("div");
+        div.className = "cardUI " + SUIT_COLOR(c.s);
+        div.textContent = cardLabel(c);
+        container.appendChild(div);
+      }
+    }
+  }
+
+  // --- Hand evaluator (best 5 of 7) ---
+  // Cat: 8 SF, 7 Quads, 6 FH, 5 Flush, 4 Straight, 3 Trips, 2 Two Pair, 1 Pair, 0 High
+  function eval5(cards) {
+    const ranks = cards.map(c=>c.r).sort((a,b)=>b-a);
+    const suits = cards.map(c=>c.s);
+    const isFlush = suits.every(s=>s===suits[0]);
+
+    const countMap = new Map();
+    for (const r of ranks) countMap.set(r, (countMap.get(r)||0)+1);
+    const groups = [...countMap.entries()].sort((a,b)=> (b[1]-a[1]) || (b[0]-a[0]));
+
+    const uniq = [...new Set(ranks)].sort((a,b)=>b-a);
+    let isStraight = false;
+    let straightHigh = 0;
+    if (uniq.length === 5) {
+      const max = uniq[0], min = uniq[4];
+      if (max - min === 4) { isStraight = true; straightHigh = max; }
+      if (uniq[0]===14 && uniq[1]===5 && uniq[2]===4 && uniq[3]===3 && uniq[4]===2) {
+        isStraight = true; straightHigh = 5;
+      }
+    }
+
+    let cat = 0, tie = [], label = "";
+    if (isStraight && isFlush) {
+      cat = 8; tie = [straightHigh]; label = "Straight Flush (" + rToChar(straightHigh) + " high)";
+    } else if (groups[0][1] === 4) {
+      cat = 7; const quad = groups[0][0]; const kicker = groups[1][0];
+      tie = [quad, kicker]; label = "Four of a Kind (" + rToChar(quad) + "s)";
+    } else if (groups[0][1] === 3 && groups[1][1] === 2) {
+      cat = 6; const trips = groups[0][0]; const pair = groups[1][0];
+      tie = [trips, pair]; label = "Full House (" + rToChar(trips) + "s full of " + rToChar(pair) + "s)";
+    } else if (isFlush) {
+      cat = 5; tie = ranks.slice(); label = "Flush (" + rToChar(ranks[0]) + " high)";
+    } else if (isStraight) {
+      cat = 4; tie = [straightHigh]; label = "Straight (" + rToChar(straightHigh) + " high)";
+    } else if (groups[0][1] === 3) {
+      cat = 3; const trips = groups[0][0];
+      const kickers = groups.slice(1).map(g=>g[0]).sort((a,b)=>b-a);
+      tie = [trips, ...kickers]; label = "Three of a Kind (" + rToChar(trips) + "s)";
+    } else if (groups[0][1] === 2 && groups[1][1] === 2) {
+      cat = 2;
+      const pairHigh = Math.max(groups[0][0], groups[1][0]);
+      const pairLow = Math.min(groups[0][0], groups[1][0]);
+      const kicker = groups[2][0];
+      tie = [pairHigh, pairLow, kicker]; label = "Two Pair (" + rToChar(pairHigh) + "s & " + rToChar(pairLow) + "s)";
+    } else if (groups[0][1] === 2) {
+      cat = 1; const pair = groups[0][0];
+      const kickers = groups.slice(1).map(g=>g[0]).sort((a,b)=>b-a);
+      tie = [pair, ...kickers]; label = "One Pair (" + rToChar(pair) + "s)";
+    } else {
+      cat = 0; tie = ranks.slice(); label = "High Card (" + rToChar(ranks[0]) + ")";
+    }
+    return { cat, tie, label };
+  }
+
+  function compareRank(a, b) {
+    if (a.cat !== b.cat) return a.cat > b.cat ? 1 : -1;
+    const n = Math.max(a.tie.length, b.tie.length);
+    for (let i=0; i<n; i++) {
+      const av = a.tie[i] || 0, bv = b.tie[i] || 0;
+      if (av !== bv) return av > bv ? 1 : -1;
+    }
+    return 0;
+  }
+
+  function bestOf7(seven) {
+    let best = null, best5 = null;
+    // choose 5-of-7 by skipping 2 indices
+    for (let i=0; i<7; i++) for (let j=i+1; j<7; j++) {
+      const five = [];
+      for (let k=0; k<7; k++) if (k!==i && k!==j) five.push(seven[k]);
+      const r = eval5(five);
+      if (!best || compareRank(r, best) > 0) { best = r; best5 = five.slice(); }
+    }
+    return { rank: best, best5 };
+  }
+
+  // --- Betting state ---
+  let deck = [];
+  let you = [], opp = [], board = [];
+  // street: 0 preflop, 1 flop, 2 turn, 3 river
+  let street = 0;
+  let ended = true;
+  let dealerIsYou = true; // dealer button alternates; dealer posts SB
+  let pot = 0;
+  let stackYou = START_STACK;
+  let stackOpp = START_STACK;
+
+  let betThisStreetYou = 0;
+  let betThisStreetOpp = 0;
+  let lastAggressor = null; // "you" / "opp" / null
+  let actionPlayer = "you"; // whose turn
+  let awaitingStreetAdvance = false;
+
+  function streetName() {
+    return ["Preflop","Flop","Turn","River"][street] || "—";
+  }
+
+  function resetStreetBets() {
+    betThisStreetYou = 0;
+    betThisStreetOpp = 0;
+    lastAggressor = null;
+  }
+
+  function toCall(player) {
+    const y = betThisStreetYou, o = betThisStreetOpp;
+    if (player === "you") return Math.max(0, o - y);
+    return Math.max(0, y - o);
+  }
+
+  function minRaiseTo(player) {
+    // Very simplified: min raise = current bet + big blind (postflop also BB).
+    const cur = Math.max(betThisStreetYou, betThisStreetOpp);
+    return cur + BIG_BLIND;
+  }
+
+  function clampBet(amount, player) {
+    const stack = (player === "you") ? stackYou : stackOpp;
+    return Math.max(0, Math.min(amount, stack));
+  }
+
+  function contribute(player, amount) {
+    amount = Math.floor(amount);
+    if (amount <= 0) return 0;
+    if (player === "you") {
+      const a = Math.min(amount, stackYou);
+      stackYou -= a;
+      pot += a;
+      betThisStreetYou += a;
+      return a;
+    } else {
+      const a = Math.min(amount, stackOpp);
+      stackOpp -= a;
+      pot += a;
+      betThisStreetOpp += a;
+      return a;
+    }
+  }
+
+  function setAction(player) {
+    actionPlayer = player;
+  }
+
+  function nextActorAfter(player) {
+    return player === "you" ? "opp" : "you";
+  }
+
+  function bothBetsEven() {
+    return betThisStreetYou === betThisStreetOpp;
+  }
+
+  function streetBettingDone() {
+    // Done when bets are even and last action was call/check (i.e., no outstanding to-call)
+    return bothBetsEven() && toCall("you")===0 && toCall("opp")===0;
+  }
+
+  function startStreet() {
+    resetStreetBets();
+    awaitingStreetAdvance = false;
+    // Heads-up action order:
+    // Preflop: SB (dealer) acts first.
+    // Postflop: BB acts first.
+    const sb = dealerIsYou ? "you" : "opp";
+    const bb = dealerIsYou ? "opp" : "you";
+    if (street === 0) setAction(sb);
+    else setAction(bb);
+  }
+
+  function postBlinds() {
+    pot = 0;
+    stackYou = stackYou; // keep stacks across hands
+    stackOpp = stackOpp;
+    resetStreetBets();
+
+    const sbPlayer = dealerIsYou ? "you" : "opp";
+    const bbPlayer = dealerIsYou ? "opp" : "you";
+
+    contribute(sbPlayer, SMALL_BLIND);
+    contribute(bbPlayer, BIG_BLIND);
+
+    // Mark that there is an initial bet to call for SB
+    lastAggressor = bbPlayer; // BB is "aggressor" by posting BB (simplification)
+  }
+
+  function burn() { dealOne(); }
+
+  function showResult(html) {
+    els.resultBox.style.display = "";
+    els.resultBox.innerHTML = html;
+  }
+
+  function hideResult() {
+    els.resultBox.style.display = "none";
+    els.resultBox.innerHTML = "";
+  }
+
+  // --- Simple opponent AI ---
+  function oppStrengthScore() {
+    // Quick heuristic: preflop: pocket pairs + high cards; postflop: use best 5-of-7 category.
+    if (street === 0) {
+      const r1 = opp[0].r, r2 = opp[1].r;
+      const hi = Math.max(r1,r2), lo = Math.min(r1,r2);
+      const isPair = r1===r2;
+      const suited = opp[0].s===opp[1].s;
+      let score = hi/14 + lo/28; // 0..~1.5
+      if (isPair) score += 0.9;
+      if (suited) score += 0.15;
+      if (hi>=13 && lo>=10) score += 0.25;
+      return score; // ~0.3..2.5
+    } else {
+      const seven = opp.concat(board);
+      const best = bestOf7(seven).rank;
+      // cat 0..8. Normalize.
+      return best.cat + (best.tie[0]||0)/100;
+    }
+  }
+
+  function youStrengthScore() {
+    if (street === 0) {
+      const r1 = you[0].r, r2 = you[1].r;
+      const hi = Math.max(r1,r2), lo = Math.min(r1,r2);
+      const isPair = r1===r2;
+      const suited = you[0].s===you[1].s;
+      let score = hi/14 + lo/28;
+      if (isPair) score += 0.9;
+      if (suited) score += 0.15;
+      if (hi>=13 && lo>=10) score += 0.25;
+      return score;
+    } else {
+      const seven = you.concat(board);
+      const best = bestOf7(seven).rank;
+      return best.cat + (best.tie[0]||0)/100;
+    }
+  }
+
+  function oppAct() {
+    if (ended || actionPlayer !== "opp" || awaitingStreetAdvance) return;
+
+    const callAmt = toCall("opp");
+    const strength = oppStrengthScore();
+    const bluff = Math.random() < 0.08;
+
+    // Decision thresholds (intentionally simple)
+    const strong = strength >= (street===0 ? 1.75 : 4.2);
+    const medium = strength >= (street===0 ? 1.25 : 2.8);
+
+    // If facing a bet
+    if (callAmt > 0) {
+      // Fold weak hands sometimes, especially to big bets
+      const potOdds = callAmt / Math.max(1, pot);
+      const foldWeak = (!medium && potOdds > 0.25 && Math.random() < 0.65) || (!medium && Math.random() < 0.35);
+      if (foldWeak && !bluff) {
+        // Opp folds
+        ended = true;
+        showResult(`<div class="winner">Opponent folded.</div>
+          <div class="small">You win the pot: <b>$${pot}</b></div>`);
+        stackYou += pot; pot = 0;
+        render();
+        return;
+      }
+      // Call most medium/strong, sometimes raise strong
+      if (strong && Math.random() < 0.35) {
+        // Raise to: minRaiseTo + small extra
+        const target = clampBet(minRaiseTo("opp") + BIG_BLIND, "opp") + betThisStreetOpp; // target total this street
+        const needed = Math.max(0, target - betThisStreetOpp);
+        contribute("opp", needed);
+        lastAggressor = "opp";
+        setAction("you");
+        render();
+        return;
+      } else {
+        contribute("opp", callAmt);
+        // If called, betting may be done
+        if (streetBettingDone()) awaitingStreetAdvance = true;
+        setAction("you"); // will flip back, but you won't act if street is ready
+        render();
+        return;
+      }
+    }
+
+    // No bet to call: either check or bet
+    if (strong || bluff) {
+      // Bet size: ~1/2 pot (cap to stack)
+      const base = Math.max(BIG_BLIND, Math.floor(pot * 0.5));
+      const bet = clampBet(base, "opp");
+      contribute("opp", bet);
+      lastAggressor = "opp";
+      setAction("you");
+      render();
+      return;
+    } else {
+      // Check
+      // If both checked, street ready
+      // We model "check" by just passing action
+      if (lastAggressor === null) {
+        // first check this street
+        lastAggressor = "none_check";
+      } else if (lastAggressor === "none_check") {
+        awaitingStreetAdvance = true;
+      }
+      setAction("you");
+      render();
+      return;
+    }
+  }
+
+  // --- UI helpers ---
+  function fmt(n) { return "$" + Math.max(0, Math.floor(n)); }
+
+  function updateRaiseSlider() {
+    const callAmt = toCall("you");
+    // If no bet, slider means "bet size". If bet exists, slider means "raise-to total".
+    const cur = Math.max(betThisStreetYou, betThisStreetOpp);
+    const youCan = stackYou;
+    let min = 0, max = 0, val = 0;
+    if (callAmt === 0 && cur === 0) {
+      min = BIG_BLIND;
+      max = Math.max(min, Math.min(youCan, BIG_BLIND * 10));
+      val = Math.min(max, BIG_BLIND * 3);
+      els.raiseRange.step = BIG_BLIND;
+    } else {
+      const minTo = minRaiseTo("you");
+      // convert to additional amount you'd put in: (raiseTo - your current)
+      const minAdd = Math.max(0, minTo - betThisStreetYou);
+      min = Math.min(minAdd, youCan);
+      max = Math.max(min, youCan);
+      val = min;
+      els.raiseRange.step = BIG_BLIND;
+    }
+    els.raiseRange.min = String(min);
+    els.raiseRange.max = String(max);
+    els.raiseRange.value = String(val);
+    els.raiseChip.textContent = fmt(val);
+  }
+
+  els.raiseRange.addEventListener("input", () => {
+    els.raiseChip.textContent = fmt(Number(els.raiseRange.value || 0));
+  });
+
+  function setStatuses() {
+    els.streetStatus.textContent = "Street: " + streetName();
+    els.potAmt.textContent = fmt(pot);
+    els.oppStack.textContent = fmt(stackOpp);
+    els.youStack.textContent = fmt(stackYou);
+
+    if (ended) {
+      els.oppStatus.textContent = "Hand ended.";
+      els.youStatus.textContent = "Tap “New Hand”.";
+    } else {
+      const ap = actionPlayer === "you" ? "Your turn." : "Opponent thinking…";
+      const callAmt = toCall("you");
+      const betInfo = (betThisStreetYou===0 && betThisStreetOpp===0) ? "No bet yet." :
+        `This street: You $${betThisStreetYou} vs Opp $${betThisStreetOpp}.`;
+      els.youStatus.textContent = ap + " " + betInfo;
+      els.oppStatus.textContent = actionPlayer === "opp" ? "Acting…" : "Waiting…";
+      els.toCallLine.textContent = "To call: " + fmt(callAmt);
+    }
+  }
+
+  function setButtons() {
+    const yourTurn = !ended && actionPlayer === "you" && !awaitingStreetAdvance;
+    const callAmt = toCall("you");
+    const cur = Math.max(betThisStreetYou, betThisStreetOpp);
+    const canNext = !ended && awaitingStreetAdvance && street < 3;
+    const canShow = !ended && awaitingStreetAdvance && street === 3;
+
+    els.btnCheckCall.disabled = !yourTurn;
+    els.btnBetRaise.disabled = !yourTurn;
+    els.btnFold.disabled = ended || !yourTurn;
+
+    els.btnNext.disabled = !canNext;
+    els.btnShow.disabled = !canShow;
+
+    // label swap check/call, bet/raise
+    els.btnCheckCall.textContent = (callAmt > 0) ? ("Call " + fmt(callAmt)) : "Check";
+    els.btnBetRaise.textContent = (cur > 0) ? "Raise" : "Bet";
+
+    // disable bet/raise if no chips
+    if (yourTurn) {
+      const minNeeded = (callAmt === 0 && cur === 0) ? BIG_BLIND : Math.max(0, minRaiseTo("you") - betThisStreetYou);
+      els.btnBetRaise.disabled = stackYou < Math.min(stackYou, minNeeded) || stackYou === 0;
+    }
+
+    // slider disabled unless your turn
+    els.raiseRange.disabled = !yourTurn;
+    updateRaiseSlider();
+  }
+
+  function render() {
+    // cards
+    renderCards(els.youCards, you, false, you.length ? 2 : 0);
+    renderCards(els.boardCards, board, false, board.length);
+
+    const reveal = ended && you.length===2 && opp.length===2 && (els.resultBox.style.display !== "none");
+    if (reveal) renderCards(els.oppCards, opp, false, 2);
+    else renderCards(els.oppCards, opp, true, opp.length ? 2 : 0);
+
+    setStatuses();
+    setButtons();
+
+    // if opponent turn, act after a small delay
+    if (!ended && actionPlayer === "opp" && !awaitingStreetAdvance) {
+      setTimeout(oppAct, 450);
+    }
+  }
+
+  // --- Street advancing ---
+  function dealFlop() { burn(); board.push(dealOne(), dealOne(), dealOne()); }
+  function dealTurn() { burn(); board.push(dealOne()); }
+  function dealRiver() { burn(); board.push(dealOne()); }
+
+  function advanceStreet() {
+    if (ended) return;
+    if (!awaitingStreetAdvance) return;
+
+    if (street === 0) dealFlop();
+    else if (street === 1) dealTurn();
+    else if (street === 2) dealRiver();
+
+    street += 1;
+    resetStreetBets();
+    awaitingStreetAdvance = false;
+    startStreet();
+    render();
+  }
+
+  // --- Showdown / fold win resolution ---
+  function doShowdown() {
+    if (ended) return;
+    const you7 = you.concat(board);
+    const opp7 = opp.concat(board);
+    const y = bestOf7(you7);
+    const o = bestOf7(opp7);
+    const cmp = compareRank(y.rank, o.rank);
+
+    const yBest = y.best5.map(cardLabel).join(" ");
+    const oBest = o.best5.map(cardLabel).join(" ");
+
+    let winnerText = "";
+    if (cmp > 0) winnerText = "You win.";
+    else if (cmp < 0) winnerText = "Opponent wins.";
+    else winnerText = "Split pot (tie).";
+
+    ended = true;
+
+    if (cmp > 0) {
+      stackYou += pot;
+    } else if (cmp < 0) {
+      stackOpp += pot;
+    } else {
+      const half = Math.floor(pot/2);
+      stackYou += half;
+      stackOpp += (pot - half);
+    }
+    pot = 0;
+
+    showResult(`
+      <div class="winner">${winnerText}</div>
+      <div class="small">
+        <b>You:</b> <span class="mono">${yBest}</span> — <strong>${y.rank.label}</strong><br/>
+        <b>Opp:</b> <span class="mono">${oBest}</span> — <strong>${o.rank.label}</strong>
+      </div>
+    `);
+    render();
+  }
+
+  function youFold() {
+    if (ended || actionPlayer !== "you" || awaitingStreetAdvance) return;
+    ended = true;
+    // Opp wins pot
+    stackOpp += pot;
+    pot = 0;
+    showResult(`<div class="winner">You folded.</div>
+      <div class="small">Opponent wins the pot. Tap <b>New Hand</b>.</div>`);
+    render();
+  }
+
+  // --- Player actions ---
+  function youCheckCall() {
+    if (ended || actionPlayer !== "you" || awaitingStreetAdvance) return;
+    const callAmt = toCall("you");
+    if (callAmt > 0) {
+      contribute("you", callAmt);
+      // after call, street ends
+      awaitingStreetAdvance = true;
+      setAction("opp"); // doesn't matter; next street button becomes active
+    } else {
+      // check: if opp already checked, street ends
+      if (lastAggressor === "none_check") {
+        awaitingStreetAdvance = true;
+      } else {
+        lastAggressor = "none_check";
+        setAction("opp");
+      }
+    }
+    render();
+  }
+
+  function youBetRaise() {
+    if (ended || actionPlayer !== "you" || awaitingStreetAdvance) return;
+    const callAmt = toCall("you");
+    const cur = Math.max(betThisStreetYou, betThisStreetOpp);
+    const sliderVal = Number(els.raiseRange.value || 0);
+
+    if (callAmt === 0 && cur === 0) {
+      // Bet amount = sliderVal
+      const bet = clampBet(sliderVal, "you");
+      if (bet <= 0) return;
+      contribute("you", bet);
+      lastAggressor = "you";
+      setAction("opp");
+      render();
+      return;
+    } else {
+      // Raise: sliderVal is additional amount (at least min add); ensure call is included.
+      const add = clampBet(sliderVal, "you");
+      if (add <= 0) return;
+      contribute("you", add);
+      lastAggressor = "you";
+      setAction("opp");
+      render();
+      return;
+    }
+  }
+
+  // --- New Hand ---
+  function newHand() {
+    if (stackYou <= 0 || stackOpp <= 0) {
+      // Reset match
+      stackYou = START_STACK;
+      stackOpp = START_STACK;
+      showResult(`<div class="winner">Stacks reset.</div><div class="small">Fresh $${START_STACK} each.</div>`);
+    } else {
+      hideResult();
+    }
+
+    deck = shuffle(makeDeck());
+    you = [dealOne(), dealOne()];
+    opp = [dealOne(), dealOne()];
+    board = [];
+    street = 0;
+    ended = false;
+    awaitingStreetAdvance = false;
+
+    dealerIsYou = !dealerIsYou; // alternate each hand
+    postBlinds();
+    startStreet();
+    render();
+  }
+
+  // --- Wire buttons ---
+  els.btnNew.addEventListener("click", newHand);
+  els.btnCheckCall.addEventListener("click", youCheckCall);
+  els.btnBetRaise.addEventListener("click", youBetRaise);
+  els.btnNext.addEventListener("click", advanceStreet);
+  els.btnShow.addEventListener("click", doShowdown);
+  els.btnFold.addEventListener("click", youFold);
+
+  // Initial UI
+  render();
+})();
+</script>
+</body>
+</html>
